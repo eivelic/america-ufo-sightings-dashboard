@@ -1,6 +1,6 @@
 # Interaktivna nadzorna ploča za prostorno-vremensku analizu UFO incidenata
 
-Ovaj projekt predstavlja interaktivnu web nadzornu ploču (Dashboard) za vizualizaciju, filtriranje i analizu višedimenzionalnih podataka o neidentificiranim zračnim fenomenima (UFO/NLO) na teritoriju SAD-a kroz razdoblje od 1969. do 2019. glass. 
+Ovaj projekt predstavlja interaktivnu web nadzornu ploču (Dashboard) za vizualizaciju, filtriranje i analizu višedimenzionalnih podataka o neidentificiranim zračnim fenomenima (UFO/NLO) na teritoriju SAD-a kroz razdoblje od 1969. do 2019. godine. 
 
 Aplikacija je u potpunosti izgrađena na klijentskoj strani (Core JS) koristeći biblioteku **D3.js (v3)**, **HTML5**, **CSS3** i **GeoJSON** kartografski model.
 
@@ -34,4 +34,4 @@ Za ispravno pokretanje potrebno je podići lokalni web poslužitelj:
 2. Instalirajte ekstenziju **Live Server**.
 3. Kliknite na gumb **"Go Live"** u donjem desnom kutu sučelja.
 
-Projekt je izrađen u sklopu kolegija za Vizualizaciju podataka.
+Projekt je izrađen u sklopu kolegija _Vizualizacija podataka_.
