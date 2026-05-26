@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>UFO Sighting Dashboard</title>
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+    
+    <style>
+        /* Base styles and refined minimalist dark theme */
+        body {
+            margin: 0;
+            padding: 25px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0c0d10;
+            color: #e2e8f0;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.6rem;
+            font-weight: 500;
+            letter-spacing: -0.3px;
+            color: #f8fafc;
+        }
+        header p {
+            margin: 6px 0 0 0;
+            color: #52525b;
+            font-size: 0.85rem;
+        }
+
+        /* Top Layout - Map and Info Side by Side */
+        .top-section-container {
+            display: table;
+            width: 100%;
+            margin-bottom: 25px;
+        }
+        .map-column {
+            display: table-cell;
+            width: 73%;
+            vertical-align: top;
+        }
+        .info-column {
+            display: table-cell;
+            width: 27%;
+            vertical-align: top;
+            padding-left: 20px;
+        }
+
+        /* Custom Box for Intelligence Guidelines */
+        .info-box {
+            background-color: #14161d;
+            border: 1px solid #22252e;
+            border-radius: 6px;
+            padding: 15px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #f8fafc;
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        /* Map Controls Panel Embedded inside Card */
+        .map-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #22252e;
+        }
+
+        button, select {
+            background-color: #1e2026;
+            color: #e2e8f0;
+            border: 1px solid #2d313f;
+            padding: 6px 12px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+        button:hover, select:hover {
+            background-color: #272a34;
+            border-color: #3f4454;
+        }
+        input[type="range"] {
+            width: 250px;
+            cursor: pointer;
+        }
+        .year-label {
+            font-weight: 500;
+            color: #94a3b8;
+            min-width: 80px;
+        }
+
+        /* Dashboard layout (Cards & Grid) */
+        .card {
+            background-color: #14161d;
+            border: 1px solid #22252e;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            position: relative;
+        }
+        
+        /* Flex header for charts to fit the dropdown menu inside the card */
+        .card-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #22252e;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .card-header-flex h2 {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #64748b;
+        }
+        
+        /* Grid layout for lower charts */
+        #charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        /* Gentle and subtle pulse animation for map points */
+        @keyframes pointPulse {
+            0% {
+                stroke: #60a5fa;
+                stroke-width: 0.5px;
+                stroke-opacity: 0.3;
+            }
+            50% {
+                stroke: #60a5fa;
+                stroke-width: 3px;
+                stroke-opacity: 0.6;
+            }
+            100% {
+                stroke: #60a5fa;
+                stroke-width: 0.5px;
+                stroke-opacity: 0.3;
+            }
+        }
+        .state-feature {
+            fill: #191b22;
+            stroke: #14161d;
+            stroke-width: 1px;
+        }
+        .ufo-point {
+            fill: #2563eb;
+            stroke: #60a5fa;
+            opacity: 0.8;
+            cursor: pointer;
+            animation: pointPulse 2.5s infinite ease-in-out;
+        }
+        .ufo-point:hover, .ufo-point.selected {
+            fill: #fde047;
+            stroke: #ffffff;
+            stroke-width: 1.5px;
+            opacity: 1;
+            animation: none;
+        }
+
+        /* Chart visual element styles */
+        .bar {
+            fill: #2563eb; 
+            cursor: pointer;
+            transition: fill 0.15s;
+        }
+        .bar:hover, .scatter-circle:hover {
+            fill: #60a5fa; 
+        }
+        .bar.active {
+            fill: #fde047; 
+        }
+        .chart-line {
+            fill: none;
+            stroke: #2563eb;
+            stroke-width: 2.5px;
+        }
+        .scatter-circle {
+            fill: #2563eb;
+            opacity: 0.6;
+        }
+        .donut-arc path {
+            stroke: #14161d;
+            stroke-width: 2px;
+        }
+        .donut-text {
+            font-size: 10px;
+            fill: #94a3b8;
+            text-anchor: middle;
+        }
+
+        .axis path, .axis line {
+            fill: none;
+            stroke: #22252e;
+            shape-rendering: crispEdges;
+        }
+        .axis text {
+            font-size: 10px;
+            fill: #475569;
+        }
+
+        /* Minimalist and elegant Footer Style */
+        footer {
+            text-align: center;
+            padding: 30px 0 10px 0;
+            margin-top: 40px;
+            border-top: 1px solid #14161d;
+            font-size: 0.8rem;
+            color: #475569;
+        }
+        footer span {
+            margin: 0 12px;
+        }
+        footer a {
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+        footer a:hover {
+            color: #60a5fa;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>UFO Sightings in America</h1>
+        <p>Interactive Spatio-Temporal Dashboard & Storytelling</p>
+    </header>
+
+    <div class="card">
+        <div class="top-section-container">
+            <div class="map-column">
+                <div id="map-chart" style="text-align: center;"></div>
+            </div>
+            
+            <div class="info-column">
+                <div class="info-box">
+                    <h3>Geographical Distribution</h3>
+                    <p>This layout visualizes documented celestial anomalies across the territory of the United States.</p>
+                    <p style="margin-top: 10px;"><strong>Instructions:</strong> Click any active, pulsing tactical point on the map projection to reveal and open the fully detailed intelligence report.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="map-controls">
+            <button id="play-pause-btn">Start Animation</button>
+            <input type="range" id="time-slider" min="1969" max="2019" value="2019" step="1">
+            <span id="year-display" class="year-label">Year: 2019</span>
+        </div>
+    </div>
+
+    <div id="charts-grid">
+        <div class="card">
+            <div class="card-header-flex">
+                <h2>UFO Shapes Frequency by State</h2>
+                <div>
+                    <label style="color: #475569; font-size: 0.75rem;">State: </label>
+                    <select id="shape-state-select"></select>
+                </div>
+            </div>
+            <div id="shape-chart"></div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header-flex">
+                <h2>UFO Sighting Trend Over Years</h2>
+                <div>
+                    <label style="color: #475569; font-size: 0.75rem;">Shape: </label>
+                    <select id="trend-shape-select"></select>
+                </div>
+            </div>
+            <div id="line-chart"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header-flex">
+                <h2>Hour vs. Duration Correlation</h2>
+                <div>
+                    <label style="color: #475569; font-size: 0.75rem;">State: </label>
+                    <select id="scatter-state-select"></select>
+                </div>
+            </div>
+            <div id="scatter-chart"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header-flex">
+                <h2>Time of Day Proportions</h2>
+                <div>
+                    <label style="color: #475569; font-size: 0.75rem;">Year: </label>
+                    <select id="donut-year-select"></select>
+                </div>
+            </div>
+            <div id="donut-chart" style="text-align: center;"></div>
+        </div>
+    </div>
+
+    <div id="note-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(6, 8, 12, 0.7); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);" onclick="closeModalOnOuterClick(event)">
+        <div style="background-color: #14161d; color: #e2e8f0; width: 550px; max-height: 75%; padding: 30px; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.7); position: relative; border: 1px solid #2d313f; line-height: 1.6; overflow-y: auto;">
+            
+            <span id="close-modal-btn" style="position: absolute; top: 15px; right: 20px; font-size: 1.4rem; cursor: pointer; color: #64748b; transition: color 0.15s;">&times;</span>
+            
+            <div style="border-bottom: 1px solid #22252e; padding-bottom: 15px; margin-bottom: 20px; font-size: 0.85rem; color: #94a3b8; letter-spacing: 0.2px;">
+                <p style="margin: 4px 0;"><strong>SIGHTING TIME:</strong> <span id="modal-date" style="color: #e2e8f0;"></span></p>
+                <p style="margin: 4px 0;"><strong>LOCATION:</strong> <span id="modal-location" style="color: #e2e8f0;"></span></p>
+                <p style="margin: 4px 0;"><strong>SHAPE STRUCTURE:</strong> <span id="modal-shape" style="color: #e2e8f0;"></span> | <strong>DURATION:</strong> <span id="modal-duration" style="color: #e2e8f0;"></span></p>
+            </div>
+            
+            <div id="modal-summary" style="font-size: 1rem; color: #cbd5e1; white-space: pre-line; font-style: italic;">
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Data Sources & UFO Sighting Intelligence Networks</p>
+        <p style="margin-top: 5px;">
+            <span><a href="http://www.nuforc.org" target="_blank">NUFORC</a> (National UFO Reporting Center)</span> | 
+            <span><a href="https://mufon.com" target="_blank">MUFON</a> (Mutual UFO Network)</span> | 
+            <span><a href="https://www.narcap.org" target="_blank">NARCAP</a> (National Aviation Reporting Center)</span>
+        </p>
+        <p style="margin-top: 15px; font-size: 0.75rem; color: #334155;">&copy; 2026 Data Visualization Academic Project. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // --- GLOBAL STATE ---
+        var allData = [];
+        var currentMapYear = 2019;
+        var isPlaying = false;
+        var timerInterval = null;
+
+        // Custom features and dropdown filters configuration state
+        var selectedShapeState = "ALL";
+        var selectedTrendShape = "ALL";
+        var selectedScatterState = "ALL";
+        var selectedDonutYear = 2019;
+
+        // Dimensions & Margins (Donji grafovi su povećani na 640x300)
+        var mapWidth = 800, mapHeight = 500;
+        var chartWidth = 640, chartHeight = 300; 
+        var margin = { top: 15, right: 25, bottom: 45, left: 60 };
+
+        // --- SVG INITIALIZATION ---
+        var mapSvg = d3.select("#map-chart").append("svg").attr("width", mapWidth).attr("height", mapHeight);
+        var shapeSvg = d3.select("#shape-chart").append("svg").attr("width", chartWidth).attr("height", chartHeight);
+        var lineSvg = d3.select("#line-chart").append("svg").attr("width", chartWidth).attr("height", chartHeight);
+        var scatterSvg = d3.select("#scatter-chart").append("svg").attr("width", chartWidth).attr("height", chartHeight);
+        var donutSvg = d3.select("#donut-chart").append("svg").attr("width", chartWidth).attr("height", chartHeight);
+
+        var mapG = mapSvg.append("g");
+        var shapeG = shapeSvg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        var lineG = lineSvg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        var scatterG = scatterSvg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        var donutG = donutSvg.append("g").attr("transform", "translate(" + (chartWidth / 2) + "," + (chartHeight / 2) + ")");
+
+        // Map Projection
+        var projection = d3.geo.albersUsa()
+            .scale(1000)
+            .translate([mapWidth / 2, mapHeight / 2]);
+
+        var pathGenerator = d3.geo.path().projection(projection);
+
+        // --- DATA LOADING & PROCESSING ---
+        d3.json("https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json", function(error, geojsonData) {
+            if (error) return console.error(error);
+
+            mapG.selectAll(".state-feature")
+                .data(geojsonData.features)
+                .enter().append("path")
+                .attr("class", "state-feature")
+                .attr("d", pathGenerator);
+
+            // CHANGED HERE: Reading the correct new filename directly
+            d3.csv("nuforc_first_1000.csv", function(error, csvData) {
+                if (error) {
+                    console.error("Error reading the CSV file! Make sure 'nuforc_first_1000.csv' is in the same folder.", error);
+                    return;
+                }
+
+                for (var i = 0; i < csvData.length; i++) {
+                    var d = csvData[i];
+                    var parsedDate = new Date(d.date_time);
+                    var year = parsedDate.getFullYear();
+                    var hour = parsedDate.getHours();
+                    
+                    // FIXED: Dynamic duration parser robustly computes duration_sec for any row
+                    var durationSec = 0;
+                    if(d.duration) {
+                        var num = parseFloat(d.duration);
+                        if(!isNaN(num)) {
+                            if(d.duration.indexOf("min") !== -1) durationSec = num * 60;
+                            else if(d.duration.indexOf("hour") !== -1) durationSec = num * 3600;
+                            else durationSec = num;
+                        }
+                    }
+
+                    allData.push({
+                        summary: d.summary,
+                        city: d.city,
+                        state: d.state ? d.state.toUpperCase() : "UNKNOWN",
+                        date_time: d.date_time,
+                        shape: d.shape ? d.shape.toLowerCase() : "unknown",
+                        duration: d.duration,
+                        duration_sec: durationSec, // dynamically attached to runtime memory array
+                        text: d.text,
+                        report_link: d.report_link,
+                        lat: parseFloat(d.city_latitude),
+                        lon: parseFloat(d.city_longitude),
+                        year: isNaN(year) ? 2019 : year,
+                        hour: isNaN(hour) ? 0 : hour
+                    });
+                }
+
+                populateDynamicDropdowns();
+                setupControls();
+                updateDashboard(); 
+            });
+        });
+
+        // --- EXTRACTION & POPULATION OF DROPDOWNS ---
+        function populateDynamicDropdowns() {
+            var uniqueStates = {};
+            var uniqueShapes = {};
+            
+            allData.forEach(function(d) {
+                if(d.state && d.state !== "UNKNOWN") uniqueStates[d.state] = true;
+                if(d.shape && d.shape !== "unknown") uniqueShapes[d.shape] = true;
+            });
+
+            var statesList = Object.keys(uniqueStates).sort();
+            var shapesList = Object.keys(uniqueShapes).sort();
+
+            var shapeStateSelect = d3.select("#shape-state-select");
+            shapeStateSelect.append("option").attr("value", "ALL").text("All States");
+            statesList.forEach(function(s) { shapeStateSelect.append("option").attr("value", s).text(s); });
+
+            var trendShapeSelect = d3.select("#trend-shape-select");
+            trendShapeSelect.append("option").attr("value", "ALL").text("All Shapes");
+            shapesList.forEach(function(sh) { trendShapeSelect.append("option").attr("value", sh).text(sh.toUpperCase()); });
+
+            var scatterStateSelect = d3.select("#scatter-state-select");
+            scatterStateSelect.append("option").attr("value", "ALL").text("All States");
+            statesList.forEach(function(s) { scatterStateSelect.append("option").attr("value", s).text(s); });
+
+            var donutYearSelect = d3.select("#donut-year-select");
+            for (var y = 2019; y >= 1969; y--) {
+                donutYearSelect.append("option").attr("value", y).text(y);
+            }
+            donutYearSelect.property("value", 2019);
+        }
+
+        // --- CONTROLS & INTERACTIVITY REGISTRATION ---
+        function setupControls() {
+            d3.select("#time-slider").on("input", function() {
+                currentMapYear = parseInt(this.value);
+                d3.select("#year-display").text("Year: " + currentMapYear);
+                updateMapPoints();
+            });
+
+            d3.select("#play-pause-btn").on("click", function() {
+                if (isPlaying) {
+                    clearInterval(timerInterval);
+                    d3.select(this).text("Start Animation");
+                    isPlaying = false;
+                } else {
+                    currentMapYear = 1969;
+                    d3.select("#time-slider").property("value", currentMapYear);
+                    d3.select("#year-display").text("Year: " + currentMapYear);
+                    updateMapPoints();
+
+                    d3.select(this).text("Stop Animation");
+                    isPlaying = true;
+
+                    timerInterval = setInterval(function() {
+                        currentMapYear++;
+                        if (currentMapYear > 2019) {
+                            clearInterval(timerInterval);
+                            d3.select("#play-pause-btn").text("Start Animation");
+                            isPlaying = false;
+                            currentMapYear = 2019;
+                        } else {
+                            d3.select("#time-slider").property("value", currentMapYear);
+                            d3.select("#year-display").text("Year: " + currentMapYear);
+                            updateMapPoints();
+                        }
+                    }, 500); 
+                }
+            });
+
+            d3.select("#shape-state-select").on("change", function() {
+                selectedShapeState = this.value;
+                updateShapeChart();
+            });
+
+            d3.select("#trend-shape-select").on("change", function() {
+                selectedTrendShape = this.value;
+                updateLineChart();
+            });
+
+            d3.select("#scatter-state-select").on("change", function() {
+                selectedScatterState = this.value;
+                updateScatterChart();
+            });
+
+            d3.select("#donut-year-select").on("change", function() {
+                selectedDonutYear = parseInt(this.value);
+                updateDonutChart();
+            });
+
+            d3.select("#close-modal-btn").on("click", function() {
+                d3.select("#note-modal").style("display", "none");
+            });
+        }
+
+        function closeModalOnOuterClick(event) {
+            if (event.target.id === "note-modal") {
+                d3.select("#note-modal").style("none");
+            }
+        }
+
+        function updateDashboard() {
+            updateMapPoints();
+            updateShapeChart();
+            updateLineChart();
+            updateScatterChart();
+            updateDonutChart();
+        }
+
+        // --- 1. MAP POINTS GRAPHIC ---
+        function updateMapPoints() {
+            var mapData = allData.filter(function(d) { return d.year <= currentMapYear; });
+
+            var points = mapG.selectAll(".ufo-point")
+                .data(mapData, function(d) { return d.report_link; });
+
+            points.enter().append("circle")
+                .attr("class", "ufo-point")
+                .attr("cx", function(d) {
+                    var coords = projection([d.lon, d.lat]);
+                    return coords ? coords[0] : -999;
+                })
+                .attr("cy", function(d) {
+                    var coords = projection([d.lon, d.lat]);
+                    return coords ? coords[1] : -999;
+                })
+                .attr("r", 0)
+                .on("click", function(d) { showStorytelling(d); });
+
+            points.transition().duration(400).attr("r", 5);
+            points.exit().transition().duration(300).attr("r", 0).remove();
+        }
+
+        // --- 2. CHART 1: SHAPES FREQUENCY (Bar Chart) ---
+        function updateShapeChart() {
+            var data = allData;
+            if(selectedShapeState !== "ALL") {
+                data = data.filter(function(d) { return d.state === selectedShapeState; });
+            }
+
+            var counts = {};
+            data.forEach(function(d) { counts[d.shape] = (counts[d.shape] || 0) + 1; });
+            var aggregated = Object.keys(counts).map(function(k) { return { key: k, value: counts[k] }; });
+            aggregated.sort(function(a, b) { return b.value - a.value; });
+            aggregated = aggregated.slice(0, 7);
+
+            var innerWidth = chartWidth - margin.left - margin.right;
+            var innerHeight = chartHeight - margin.top - margin.bottom;
+
+            var x = d3.scale.ordinal().domain(aggregated.map(function(d) { return d.key; })).rangeRoundBands([0, innerWidth], 0.25);
+            var y = d3.scale.linear().domain([0, d3.max(aggregated, function(d) { return d.value; }) || 10]).range([innerHeight, 0]);
+
+            var xAxis = d3.svg.axis().scale(x).orient("bottom");
+            var yAxis = d3.svg.axis().scale(y).orient("left").ticks(5);
+
+            var bars = shapeG.selectAll(".bar").data(aggregated, function(d) { return d.key; });
+
+            bars.enter().append("rect").attr("class", "bar").attr("y", innerHeight).attr("height", 0);
+
+            bars.transition().duration(500)
+                .attr("x", function(d) { return x(d.key); })
+                .attr("width", x.rangeBand())
+                .attr("y", function(d) { return y(d.value); })
+                .attr("height", function(d) { return innerHeight - y(d.value); });
+
+            bars.exit().transition().duration(300).attr("y", innerHeight).attr("height", 0).remove();
+
+            shapeG.selectAll(".axis").remove();
+            shapeG.append("g").attr("class", "x-axis axis").attr("transform", "translate(0," + innerHeight + ")").call(xAxis);
+            shapeG.append("g").attr("class", "y-axis axis").call(yAxis);
+        }
+
+        // --- 3. CHART 2: TIMELINE TREND (Line Chart) ---
+        function updateLineChart() {
+            var data = allData;
+            if(selectedTrendShape !== "ALL") {
+                data = data.filter(function(d) { return d.shape === selectedTrendShape; });
+            }
+
+            var yearCounts = {};
+            for(var y = 1969; y <= 2019; y++) { yearCounts[y] = 0; }
+            data.forEach(function(d) { if(d.year >= 1969 && d.year <= 2019) yearCounts[d.year]++; });
+
+            var aggregated = Object.keys(yearCounts).map(function(k) { return { year: parseInt(k), value: yearCounts[k] }; });
+            aggregated.sort(function(a,b) { return a.year - b.year; });
+
+            var innerWidth = chartWidth - margin.left - margin.right;
+            var innerHeight = chartHeight - margin.top - margin.bottom;
+
+            var x = d3.scale.linear().domain([1969, 2019]).range([0, innerWidth]);
+            var y = d3.scale.linear().domain([0, d3.max(aggregated, function(d) { return d.value; }) || 10]).range([innerHeight, 0]);
+
+            var xAxis = d3.svg.axis().scale(x).orient("bottom").tickFormat(d3.format("d")).ticks(8);
+            var yAxis = d3.svg.axis().scale(y).orient("left").ticks(5);
+
+            var lineGenerator = d3.svg.line()
+                .x(function(d) { return x(d.year); })
+                .y(function(d) { return y(d.value); });
+
+            var path = lineG.selectAll(".chart-line").data([aggregated]);
+            
+            path.enter().append("path").attr("class", "chart-line");
+            path.transition().duration(500).attr("d", lineGenerator);
+
+            lineG.selectAll(".axis").remove();
+            lineG.append("g").attr("class", "x-axis axis").attr("transform", "translate(0," + innerHeight + ")").call(xAxis);
+            lineG.append("g").attr("class", "y-axis axis").call(yAxis);
+        }
+
+        // --- 4. CHART 3: CORE RELATION PATTERN (Scatter Plot) ---
+        function updateScatterChart() {
+            var data = allData.filter(function(d) { return d.duration_sec > 0 && d.duration_sec <= 3600; });
+            if(selectedScatterState !== "ALL") {
+                data = data.filter(function(d) { return d.state === selectedScatterState; });
+            }
+
+            var innerWidth = chartWidth - margin.left - margin.right;
+            var innerHeight = chartHeight - margin.top - margin.bottom;
+
+            var x = d3.scale.linear().domain([0, 24]).range([0, innerWidth]);
+            var y = d3.scale.linear().domain([0, 3600]).range([innerHeight, 0]);
+
+            var xAxis = d3.svg.axis().scale(x).orient("bottom").ticks(12);
+            var yAxis = d3.svg.axis().scale(y).orient("left").ticks(5);
+
+            var circles = scatterG.selectAll(".scatter-circle")
+                .data(data, function(d) { return d.report_link; });
+
+            circles.enter().append("circle")
+                .attr("class", "scatter-circle")
+                .attr("r", 4.5)
+                .on("click", function(d) { showStorytelling(d); });
+
+            circles.transition().duration(500)
+                .attr("cx", function(d) { return x(d.hour); })
+                .attr("cy", function(d) { return y(d.duration_sec); });
+
+            circles.exit().transition().duration(300).attr("r", 0).remove();
+
+            scatterG.selectAll(".axis").remove();
+            scatterG.append("g").attr("class", "x-axis axis").attr("transform", "translate(0," + innerHeight + ")").call(xAxis);
+            scatterG.append("g").attr("class", "y-axis axis").call(yAxis);
+        }
+
+        // --- 5. CHART 4: SHARE PROPORCIONS (Donut Chart) ---
+        function updateDonutChart() {
+            var data = allData.filter(function(d) { return d.year <= selectedDonutYear; });
+
+            var buckets = {"Night": 0, "Morning": 0, "Afternoon": 0, "Evening": 0};
+            data.forEach(function(d) {
+                if (d.hour >= 0 && d.hour < 6) buckets["Night"]++;
+                else if (d.hour >= 6 && d.hour < 12) buckets["Morning"]++;
+                else if (d.hour >= 12 && d.hour < 18) buckets["Afternoon"]++;
+                else buckets["Evening"]++;
+            });
+
+            var aggregated = Object.keys(buckets).map(function(k) { return { label: k, value: buckets[k] }; });
+
+            var radius = Math.min(chartWidth - margin.left - margin.right, chartHeight - margin.top - margin.bottom) / 2;
+
+            var pie = d3.layout.pie().sort(null).value(function(d) { return d.value; });
+            
+            var arc = d3.svg.arc()
+                .outerRadius(radius * 0.95)
+                .innerRadius(radius * 0.55);
+
+            var colors = ["#1e3a8a", "#2563eb", "#60a5fa", "#93c5fd"];
+
+            var arcs = donutG.selectAll(".donut-arc").data(pie(aggregated));
+
+            var arcsEnter = arcs.enter().append("g").attr("class", "donut-arc");
+            arcsEnter.append("path");
+            arcsEnter.append("text").attr("class", "donut-text");
+
+            arcs.select("path")
+                .attr("fill", function(d, i) { return colors[i]; })
+                .attr("d", arc);
+
+            arcs.select("text")
+                .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+                .text(function(d) { return d.data.value > 0 ? d.data.label : ""; });
+
+            arcs.exit().remove();
+        }
+
+        // --- 6. INTELLIGENCE REPORT POP-UP ENGINE ---
+        function showStorytelling(d) {
+            d3.select("#note-modal").style("display", "flex");
+
+            d3.select("#modal-date").text(d.date_time.replace("T", " at "));
+            d3.select("#modal-location").text(d.city + ", " + d.state.toUpperCase());
+            d3.select("#modal-shape").text(d.shape.toUpperCase());
+            d3.select("#modal-duration").text(d.duration);
+            d3.select("#modal-summary").text(d.summary);
+
+            d3.selectAll(".ufo-point").classed("selected", false);
+            d3.selectAll(".ufo-point").filter(function(p) {
+                return p.report_link === d.report_link;
+            }).classed("selected", true);
+        }
+    </script>
+</body>
+</html>
